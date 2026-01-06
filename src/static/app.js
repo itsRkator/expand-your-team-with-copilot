@@ -512,12 +512,15 @@ document.addEventListener("DOMContentLoaded", () => {
         showMessage("Unable to share. Please try again.", "error");
       });
     } else {
-      // Fallback for browsers without clipboard API
+      // Fallback for legacy browsers using deprecated execCommand (for compatibility only)
       try {
         const textArea = document.createElement("textarea");
         textArea.value = shareText;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-999999px";
+        textArea.style.position = "absolute";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "-9999px";
+        textArea.style.opacity = "0";
+        textArea.setAttribute("aria-hidden", "true");
         document.body.appendChild(textArea);
         textArea.select();
         document.execCommand('copy');
@@ -528,6 +531,13 @@ document.addEventListener("DOMContentLoaded", () => {
         showMessage("Unable to copy to clipboard. Please copy the URL manually.", "error");
       }
     }
+  }
+
+  // Helper function to escape HTML to prevent XSS
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   // Function to render a single activity card
@@ -557,6 +567,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Format the schedule using the new helper function
     const formattedSchedule = formatSchedule(details);
 
+    // Escape HTML for security
+    const escapedName = escapeHtml(name);
+    const escapedDescription = escapeHtml(details.description);
+
     // Create activity tag
     const tagHtml = `
       <span class="activity-tag" style="background-color: ${typeInfo.color}; color: ${typeInfo.textColor}">
@@ -579,15 +593,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     activityCard.innerHTML = `
       ${tagHtml}
-      <h4>${name}</h4>
-      <p>${details.description}</p>
+      <h4>${escapedName}</h4>
+      <p>${escapedDescription}</p>
       <p class="tooltip">
         <strong>Schedule:</strong> ${formattedSchedule}
         <span class="tooltip-text">Regular meetings at this time throughout the semester</span>
       </p>
       ${capacityIndicator}
       <div class="share-button-container">
-        <button class="share-button tooltip" data-activity="${name}">
+        <button class="share-button tooltip">
           <span class="share-icon">🔗</span>
           <span>Share</span>
           <span class="tooltip-text">Share this activity with friends</span>
@@ -600,11 +614,11 @@ document.addEventListener("DOMContentLoaded", () => {
             .map(
               (email) => `
             <li>
-              ${email}
+              ${escapeHtml(email)}
               ${
                 currentUser
                   ? `
-                <span class="delete-participant tooltip" data-activity="${name}" data-email="${email}">
+                <span class="delete-participant tooltip">
                   ✖
                   <span class="tooltip-text">Unregister this student</span>
                 </span>
@@ -621,7 +635,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ${
           currentUser
             ? `
-          <button class="register-button" data-activity="${name}" ${
+          <button class="register-button" ${
                 isFull ? "disabled" : ""
               }>
             ${isFull ? "Activity Full" : "Register Student"}
@@ -638,8 +652,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Add click handlers for delete buttons
     const deleteButtons = activityCard.querySelectorAll(".delete-participant");
-    deleteButtons.forEach((button) => {
-      button.addEventListener("click", handleUnregister);
+    deleteButtons.forEach((button, index) => {
+      button.addEventListener("click", () => {
+        handleUnregister({
+          target: {
+            dataset: {
+              activity: name,
+              email: details.participants[index]
+            }
+          }
+        });
+      });
     });
 
     // Add click handler for share button
