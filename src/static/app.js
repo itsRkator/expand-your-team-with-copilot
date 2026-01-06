@@ -507,6 +507,76 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Function to share activity
+  async function shareActivity(name, details) {
+    const formattedSchedule = formatSchedule(details);
+    const shareData = {
+      title: `${name} - Mergington High School`,
+      text: `Check out this activity: ${name}\n${details.description}\nSchedule: ${formattedSchedule}`,
+      url: window.location.href
+    };
+
+    // Try using native Web Share API if available
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        showMessage("Activity shared successfully!", "success");
+      } catch (err) {
+        // User cancelled or error occurred
+        if (err.name !== "AbortError") {
+          console.error("Error sharing:", err);
+          fallbackShare(shareData);
+        }
+      }
+    } else {
+      // Fallback: copy to clipboard
+      fallbackShare(shareData);
+    }
+  }
+
+  // Fallback sharing method (copy to clipboard)
+  function fallbackShare(shareData) {
+    const shareText = `${shareData.title}\n\n${shareData.text}\n\n${shareData.url}`;
+    
+    // Check if clipboard API is available
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareText).then(() => {
+        showMessage("Activity details copied to clipboard!", "success");
+      }).catch(err => {
+        console.error("Failed to copy:", err);
+        showMessage("Unable to share. Please try again.", "error");
+      });
+    } else {
+      // WARNING: document.execCommand is deprecated but kept for maximum compatibility
+      // with legacy browsers. Modern browsers (Chrome 66+, Firefox 63+, Safari 13.1+) 
+      // all support the Clipboard API above.
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = shareText;
+        textArea.style.position = "absolute";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "-9999px";
+        textArea.style.opacity = "0";
+        textArea.setAttribute("aria-hidden", "true");
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showMessage("Activity details copied to clipboard!", "success");
+      } catch (err) {
+        console.error("Failed to copy:", err);
+        showMessage("Unable to copy to clipboard. Please copy the URL manually.", "error");
+      }
+    }
+  }
+
+  // Helper function to escape HTML to prevent XSS
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   // Function to render a single activity card
   function renderActivityCard(name, details) {
     const activityCard = document.createElement("div");
@@ -534,6 +604,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // Format the schedule using the new helper function
     const formattedSchedule = formatSchedule(details);
 
+    // Escape HTML for security
+    const escapedName = escapeHtml(name);
+    const escapedDescription = escapeHtml(details.description);
+
     // Create activity tag
     const tagHtml = `
       <span class="activity-tag" style="background-color: ${typeInfo.color}; color: ${typeInfo.textColor}">
@@ -556,13 +630,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     activityCard.innerHTML = `
       ${tagHtml}
-      <h4>${name}</h4>
-      <p>${details.description}</p>
+      <h4>${escapedName}</h4>
+      <p>${escapedDescription}</p>
       <p class="tooltip">
         <strong>Schedule:</strong> ${formattedSchedule}
         <span class="tooltip-text">Regular meetings at this time throughout the semester</span>
       </p>
       ${capacityIndicator}
+      <div class="share-button-container">
+        <button class="share-button tooltip">
+          <span class="share-icon">🔗</span>
+          <span>Share</span>
+          <span class="tooltip-text">Share this activity with friends</span>
+        </button>
+      </div>
       <div class="participants-list">
         <h5>Current Participants:</h5>
         <ul>
@@ -570,11 +651,11 @@ document.addEventListener("DOMContentLoaded", () => {
             .map(
               (email) => `
             <li>
-              ${email}
+              ${escapeHtml(email)}
               ${
                 currentUser
                   ? `
-                <span class="delete-participant tooltip" data-activity="${name}" data-email="${email}">
+                <span class="delete-participant tooltip">
                   ✖
                   <span class="tooltip-text">Unregister this student</span>
                 </span>
@@ -591,7 +672,7 @@ document.addEventListener("DOMContentLoaded", () => {
         ${
           currentUser
             ? `
-          <button class="register-button" data-activity="${name}" ${
+          <button class="register-button" ${
                 isFull ? "disabled" : ""
               }>
             ${isFull ? "Activity Full" : "Register Student"}
@@ -608,8 +689,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Add click handlers for delete buttons
     const deleteButtons = activityCard.querySelectorAll(".delete-participant");
-    deleteButtons.forEach((button) => {
-      button.addEventListener("click", handleUnregister);
+    deleteButtons.forEach((button, index) => {
+      button.addEventListener("click", () => {
+        handleUnregister({
+          target: {
+            dataset: {
+              activity: name,
+              email: details.participants[index]
+            }
+          }
+        });
+      });
+    });
+
+    // Add click handler for share button
+    const shareButton = activityCard.querySelector(".share-button");
+    shareButton.addEventListener("click", () => {
+      shareActivity(name, details);
     });
 
     // Add click handler for register button (only when authenticated)
