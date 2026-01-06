@@ -503,12 +503,31 @@ document.addEventListener("DOMContentLoaded", () => {
   function fallbackShare(shareData) {
     const shareText = `${shareData.title}\n\n${shareData.text}\n\n${shareData.url}`;
     
-    navigator.clipboard.writeText(shareText).then(() => {
-      showMessage("Activity details copied to clipboard!", "success");
-    }).catch(err => {
-      console.error("Failed to copy:", err);
-      showMessage("Unable to share. Please try again.", "error");
-    });
+    // Check if clipboard API is available
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareText).then(() => {
+        showMessage("Activity details copied to clipboard!", "success");
+      }).catch(err => {
+        console.error("Failed to copy:", err);
+        showMessage("Unable to share. Please try again.", "error");
+      });
+    } else {
+      // Fallback for browsers without clipboard API
+      try {
+        const textArea = document.createElement("textarea");
+        textArea.value = shareText;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showMessage("Activity details copied to clipboard!", "success");
+      } catch (err) {
+        console.error("Failed to copy:", err);
+        showMessage("Unable to copy to clipboard. Please copy the URL manually.", "error");
+      }
+    }
   }
 
   // Function to render a single activity card
