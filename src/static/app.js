@@ -512,7 +512,9 @@ document.addEventListener("DOMContentLoaded", () => {
         showMessage("Unable to share. Please try again.", "error");
       });
     } else {
-      // Fallback for legacy browsers using deprecated execCommand (for compatibility only)
+      // WARNING: document.execCommand is deprecated but kept for maximum compatibility
+      // with legacy browsers. Modern browsers (Chrome 66+, Firefox 63+, Safari 13.1+) 
+      // all support the Clipboard API above.
       try {
         const textArea = document.createElement("textarea");
         textArea.value = shareText;
