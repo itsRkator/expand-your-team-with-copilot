@@ -472,6 +472,45 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // Function to share activity
+  async function shareActivity(name, details) {
+    const formattedSchedule = formatSchedule(details);
+    const shareData = {
+      title: `${name} - Mergington High School`,
+      text: `Check out this activity: ${name}\n${details.description}\nSchedule: ${formattedSchedule}`,
+      url: window.location.href
+    };
+
+    // Try using native Web Share API if available
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        showMessage("Activity shared successfully!", "success");
+      } catch (err) {
+        // User cancelled or error occurred
+        if (err.name !== "AbortError") {
+          console.error("Error sharing:", err);
+          fallbackShare(shareData);
+        }
+      }
+    } else {
+      // Fallback: copy to clipboard
+      fallbackShare(shareData);
+    }
+  }
+
+  // Fallback sharing method (copy to clipboard)
+  function fallbackShare(shareData) {
+    const shareText = `${shareData.title}\n\n${shareData.text}\n\n${shareData.url}`;
+    
+    navigator.clipboard.writeText(shareText).then(() => {
+      showMessage("Activity details copied to clipboard!", "success");
+    }).catch(err => {
+      console.error("Failed to copy:", err);
+      showMessage("Unable to share. Please try again.", "error");
+    });
+  }
+
   // Function to render a single activity card
   function renderActivityCard(name, details) {
     const activityCard = document.createElement("div");
@@ -528,6 +567,13 @@ document.addEventListener("DOMContentLoaded", () => {
         <span class="tooltip-text">Regular meetings at this time throughout the semester</span>
       </p>
       ${capacityIndicator}
+      <div class="share-button-container">
+        <button class="share-button tooltip" data-activity="${name}">
+          <span class="share-icon">🔗</span>
+          <span>Share</span>
+          <span class="tooltip-text">Share this activity with friends</span>
+        </button>
+      </div>
       <div class="participants-list">
         <h5>Current Participants:</h5>
         <ul>
@@ -575,6 +621,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const deleteButtons = activityCard.querySelectorAll(".delete-participant");
     deleteButtons.forEach((button) => {
       button.addEventListener("click", handleUnregister);
+    });
+
+    // Add click handler for share button
+    const shareButton = activityCard.querySelector(".share-button");
+    shareButton.addEventListener("click", () => {
+      shareActivity(name, details);
     });
 
     // Add click handler for register button (only when authenticated)

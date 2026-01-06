@@ -238,6 +238,45 @@ section h3 {
   background-color: var(--success);
 }
 
+/* Share button container */
+.share-button-container {
+  margin: 8px 0;
+  display: flex;
+  justify-content: center;
+}
+
+.share-button {
+  background: linear-gradient(145deg, #4CAF50, #388E3C);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+  position: relative;
+}
+
+.share-button:hover {
+  background: linear-gradient(145deg, #66BB6A, #4CAF50);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+}
+
+.share-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.2);
+}
+
+.share-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
 /* Participants list */
 .participants-list {
   margin-top: 8px;
